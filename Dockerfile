@@ -12,8 +12,14 @@ RUN echo "deb http://mirror.arvancloud.ir/ubuntu/ jammy main restricted universe
 RUN apt-get update && apt-get install -y \
     apache2 mariadb-server \
     php php-mysql php-cli php-curl php-xml php-mbstring php-zip php-gd libapache2-mod-php \
-    wget curl unzip tar openssl supervisor \
+    wget curl unzip tar openssl supervisor nano \
     && rm -rf /var/lib/apt/lists/*
+
+# ===== Apache VirtualHost (pretty permalinks) =====
+COPY apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
+ && a2enmod rewrite \
+ && a2ensite 000-default.conf
 
 # ===== Install phpMyAdmin =====
 COPY phpmyadmin /phpmyadmin
@@ -24,14 +30,17 @@ RUN chmod +x /phpmyadmin/get.sh \
 
 # ===== Install FileBrowser =====
 COPY filebrowser /filebrowser
-RUN chmod +x /filebrowser/get.sh
-RUN /filebrowser/get.sh
+RUN chmod +x /filebrowser/get.sh \
+ && /filebrowser/get.sh
 
 # ===== WordPress =====
 COPY wordpress-6.9.4.tar.gz /tmp/latest.tar.gz
+COPY wordpress/.htaccess /tmp/wordpress.htaccess
 RUN cd /tmp \
  && tar -xzf latest.tar.gz \
- && mv wordpress/* /var/www/html/
+ && mv wordpress/* /var/www/html/ \
+ && rm -f /var/www/html/index.html \
+ && cp /tmp/wordpress.htaccess /var/www/html/.htaccess
 
 # ===== Permissions =====
 RUN chown -R www-data:www-data /var/www/html
@@ -64,9 +73,9 @@ RUN set -eux; \
     echo "zend_extension=$EXT_DIR/$(basename $IONCUBE)" > /etc/php/${PHP_MAJOR}.${PHP_MINOR}/apache2/conf.d/00-ioncube.ini; \
     echo "zend_extension=$EXT_DIR/$(basename $IONCUBE)" > /etc/php/${PHP_MAJOR}.${PHP_MINOR}/cli/conf.d/00-ioncube.ini
 
-
+# ===== WP-CLI =====
 RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
- && chmod +x wp-cli.phar  \
+ && chmod +x wp-cli.phar \
  && mv wp-cli.phar /usr/local/bin/wp
 
 EXPOSE 80 8080 3306

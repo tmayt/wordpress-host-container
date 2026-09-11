@@ -178,7 +178,9 @@ The image is based on Ubuntu 22.04, uses the Arvan Cloud apt mirror, and bundles
 ├── init.sh                 # First-run DB, WordPress, FileBrowser, phpMyAdmin setup
 ├── install.sh              # Generates docker-compose with random ports/passwords
 ├── supervisord.conf        # Runs Apache, MariaDB, FileBrowser, init
+├── apache/                 # Apache VirtualHost (WordPress permalinks)
 ├── wordpress-*.tar.gz      # WordPress source (bundled)
+├── wordpress/.htaccess     # Default pretty-permalink rewrite rules
 ├── filebrowser/            # FileBrowser binary + install script
 ├── phpmyadmin/             # phpMyAdmin archive + Apache config
 └── ioncube/                # ionCube PHP loaders
@@ -199,6 +201,7 @@ The image is based on Ubuntu 22.04, uses the Arvan Cloud apt mirror, and bundles
 | Problem | What to try |
 |---------|-------------|
 | Blank page or 502 | Wait ~15s after start; check `docker compose logs` for MariaDB/Apache errors |
+| Inner pages / posts return 404 | Pretty permalinks need Apache `mod_rewrite`. Rebuild the image so rewrite rules are in the VirtualHost and `.htaccess`. Then restart the container. Existing volumes keep old files: if `.htaccess` is still missing, `init.sh` writes it on the next start. |
 | Forgot passwords | Read env from `docker-compose.yml` or first-run logs; reset FileBrowser with `filebrowser users` inside the container |
 | Re-run first-time setup | Remove the container **and** volumes, then `up` again (wipes data) |
 | ionCube build fails | Ensure the matching `ioncube_loader_lin_X.Y.so` exists in `ioncube/` for the PHP version in the image |

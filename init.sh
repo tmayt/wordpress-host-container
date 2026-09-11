@@ -2,6 +2,42 @@
 set -e
 
 STATE_FILE="/var/lib/bootstrap.done"
+WP_HTACCESS="/var/www/html/.htaccess"
+
+# Pretty permalinks 404 without rewrite rules. Keep this on every start
+# because the html volume can exist without a usable .htaccess.
+ensure_wordpress_htaccess() {
+    local block
+    block="$(cat <<'EOF'
+# BEGIN WordPress
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+# END WordPress
+EOF
+)"
+
+    if [ ! -d /var/www/html ]; then
+        return 0
+    fi
+
+    if [ ! -f "$WP_HTACCESS" ]; then
+        printf '%s\n' "$block" > "$WP_HTACCESS"
+        chown www-data:www-data "$WP_HTACCESS"
+        echo "[INIT] Created WordPress .htaccess for permalinks"
+    elif ! grep -q 'RewriteEngine' "$WP_HTACCESS"; then
+        printf '\n%s\n' "$block" >> "$WP_HTACCESS"
+        echo "[INIT] Appended WordPress rewrite rules to .htaccess"
+    fi
+}
+
+ensure_wordpress_htaccess
 
 # =========================
 # FIRST RUN CHECK
