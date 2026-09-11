@@ -27,14 +27,37 @@ EOF
         return 0
     fi
 
-    if [ ! -f "$WP_HTACCESS" ]; then
-        printf '%s\n' "$block" > "$WP_HTACCESS"
-        chown www-data:www-data "$WP_HTACCESS"
-        echo "[INIT] Created WordPress .htaccess for permalinks"
-    elif ! grep -q 'RewriteEngine' "$WP_HTACCESS"; then
+    if [ -f "$WP_HTACCESS" ]; then
+        # Drop a previous WordPress block so a wrong RewriteBase / RewriteEngine Off
+        # left on the html volume cannot keep permalinks 404 after an image rebuild.
+        sed -i '/# BEGIN WordPress/,/# END WordPress/d' "$WP_HTACCESS"
+        sed -i '/^[[:space:]]*RewriteEngine[[:space:]]\+Off[[:space:]]*$/d' "$WP_HTACCESS"
         printf '\n%s\n' "$block" >> "$WP_HTACCESS"
-        echo "[INIT] Appended WordPress rewrite rules to .htaccess"
+        echo "[INIT] Refreshed WordPress .htaccess rewrite rules"
+    else
+        printf '%s\n' "$block" > "$WP_HTACCESS"
+        echo "[INIT] Created WordPress .htaccess for permalinks"
     fi
+    chown www-data:www-data "$WP_HTACCESS" 2>/dev/null || true
+}
+
+flush_permalinks() {
+    if [ ! -f /var/www/html/wp-config.php ]; then
+        return 0
+    fi
+
+    local i
+    for i in $(seq 1 30); do
+        if wp db check --allow-root --path=/var/www/html >/dev/null 2>&1; then
+            if wp core is-installed --allow-root --path=/var/www/html >/dev/null 2>&1; then
+                wp rewrite flush --hard --allow-root --path=/var/www/html >/dev/null 2>&1 || true
+                echo "[INIT] Flushed WordPress rewrite rules"
+            fi
+            return 0
+        fi
+        sleep 1
+    done
+    echo "[INIT] Skipped rewrite flush (database not ready)"
 }
 
 ensure_wordpress_htaccess
@@ -43,6 +66,7 @@ ensure_wordpress_htaccess
 # FIRST RUN CHECK
 # =========================
 if [ -f "$STATE_FILE" ]; then
+    flush_permalinks
     echo "[INIT] Already initialized. Skipping..."
     exit 0
 fi

@@ -201,7 +201,7 @@ The image is based on Ubuntu 22.04, uses the Arvan Cloud apt mirror, and bundles
 | Problem | What to try |
 |---------|-------------|
 | Blank page or 502 | Wait ~15s after start; check `docker compose logs` for MariaDB/Apache errors |
-| Inner pages / posts return 404 | Pretty permalinks need Apache `mod_rewrite`. Rebuild the image so rewrite rules are in the VirtualHost and `.htaccess`. Then restart the container. Existing volumes keep old files: if `.htaccess` is still missing, `init.sh` writes it on the next start. |
+| Inner pages / posts return 404 | Rebuild **and recreate** the container (`docker compose up -d --build --force-recreate`). Do not wipe volumes. An old `wp_html` `.htaccess` can disable Directory rewrite; the image now rewrites at VirtualHost level so that cannot 404 inner pages. Then open Settings → Permalinks and Save, or `docker exec <container> wp rewrite flush --hard --allow-root`. |
 | Forgot passwords | Read env from `docker-compose.yml` or first-run logs; reset FileBrowser with `filebrowser users` inside the container |
 | Re-run first-time setup | Remove the container **and** volumes, then `up` again (wipes data) |
 | ionCube build fails | Ensure the matching `ioncube_loader_lin_X.Y.so` exists in `ioncube/` for the PHP version in the image |
