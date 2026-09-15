@@ -38,7 +38,6 @@ CREDENTIALS_TOKEN=$(openssl rand -hex 24)
 
 # Host port for edge → container:80 (not shown in public URLs)
 PORT_HTTP=$(shuf -i 20000-40000 -n 1)
-PORT_DB=$(shuf -i 50001-60000 -n 1)
 
 CREDENTIALS_URL="http://${SITE_DOMAIN}/${CREDENTIALS_TOKEN}.html"
 
@@ -53,7 +52,6 @@ services:
     build: .
     ports:
       - "${PORT_HTTP}:80"
-      - "${PORT_DB}:3306"
     environment:
       FILEBROWSER_USER: admin
       FILEBROWSER_PASS: ${FILEBROWSER_PASS}
@@ -63,7 +61,6 @@ services:
       DB_ROOT_PASS: ${DB_PASS}
       CREDENTIALS_TOKEN: ${CREDENTIALS_TOKEN}
       PUBLIC_HOST: "${SITE_DOMAIN}"
-      PUBLIC_DB_PORT: "${PORT_DB}"
     volumes:
       - wp_html:/var/www/html
       - wp_db:/var/lib/mysql
@@ -83,7 +80,6 @@ echo
 echo "Website Name           : ${SITE_NAME}"
 echo "Domain                 : ${SITE_DOMAIN}"
 echo "Docker HTTP port (edge): ${PORT_HTTP}"
-echo "Docker MariaDB port    : ${PORT_DB}"
 echo "WordPress URL          : http://${SITE_DOMAIN}/"
 echo "phpMyAdmin URL         : http://${SITE_DOMAIN}/phpmyadmin"
 echo "FileBrowser URL        : http://${SITE_DOMAIN}/filebrowser"

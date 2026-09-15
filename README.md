@@ -12,7 +12,7 @@ Use this when you want WordPress up quickly without installing PHP, MySQL, and A
 |-----------|------|-------------------|
 | **WordPress** | CMS / website | `http://<domain>/` |
 | **Apache** | Web server | Port `80` inside the container |
-| **MariaDB** | Database | `localhost:3306` inside the container; optional host port mapping |
+| **MariaDB** | Database | Only inside the container (`localhost:3306`); manage via phpMyAdmin |
 | **phpMyAdmin** | Manage MariaDB in the browser | `http://<domain>/phpmyadmin` |
 | **FileBrowser** | Edit files under `/var/www/html` | `http://<domain>/filebrowser` |
 | **WP-CLI** | WordPress command line | `docker exec -it <container> wp ...` |
@@ -45,7 +45,6 @@ The script prints domain-based URLs (no port in the link) and a private credenti
 Website Name           : mysite
 Domain                 : example.com
 Docker HTTP port (edge): 28431
-Docker MariaDB port    : 52388
 WordPress URL          : http://example.com/
 phpMyAdmin URL         : http://example.com/phpmyadmin
 FileBrowser URL        : http://example.com/filebrowser
@@ -53,7 +52,7 @@ FileBrowser URL        : http://example.com/filebrowser
 Credentials page       : http://example.com/<random>.html
 ```
 
-Point your edge/proxy at the Docker HTTP port. The credentials HTML is created on first container boot under a random filename.
+Point your edge/proxy at the Docker HTTP port. MariaDB is not published on the host—use phpMyAdmin. The credentials HTML is created on first container boot under a random filename.
 ---
 
 ## Manual install (clone repo)
@@ -81,7 +80,6 @@ Default ports in the bundled `docker-compose.yml`:
 | Service | Host port | URL |
 |---------|-----------|-----|
 | WordPress + phpMyAdmin + FileBrowser | `80` | `http://localhost/`, `/phpmyadmin`, `/filebrowser` |
-| MariaDB (optional external access) | not exposed by default | use `docker exec` or add `3306:3306` |
 
 View first-run credentials in logs:
 

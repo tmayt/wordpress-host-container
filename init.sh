@@ -53,7 +53,6 @@ write_credentials_page() {
     : "${DB_ROOT_PASS:=root123456}"
     : "${FILEBROWSER_USER:=admin}"
     : "${FILEBROWSER_PASS:=admin123@qwe}"
-    : "${PUBLIC_DB_PORT:=3306}"
     : "${PUBLIC_HOST:=}"
 
     local token_file="/var/lib/credentials.token"
@@ -155,8 +154,9 @@ write_credentials_page() {
 
   <section>
     <h2>MariaDB</h2>
-    <div class="row"><span class="label">Host</span><span class="value">${host_hint}</span></div>
-    <div class="row"><span class="label">Port</span><span class="value">${PUBLIC_DB_PORT}</span></div>
+    <div class="row"><span class="label">Access</span><span class="value">Internal only — use phpMyAdmin (not exposed on the host)</span></div>
+    <div class="row"><span class="label">Host</span><span class="value">localhost <em>(inside container)</em></span></div>
+    <div class="row"><span class="label">Port</span><span class="value">3306</span></div>
     <div class="row"><span class="label">Database</span><span class="value">${e_db_name} <button class="copy" type="button" data-copy="${e_db_name}">copy</button></span></div>
     <div class="row"><span class="label">User</span><span class="value">${e_db_user} <button class="copy" type="button" data-copy="${e_db_user}">copy</button></span></div>
     <div class="row"><span class="label">Password</span><span class="value">${e_db_pass} <button class="copy" type="button" data-copy="${e_db_pass}">copy</button></span></div>
