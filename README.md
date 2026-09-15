@@ -27,10 +27,10 @@ On first start, `init.sh` creates the database, WordPress `wp-config.php`, FileB
 Generate a `docker-compose.yml` with random ports and passwords:
 
 ```bash
-bash <(curl -fsSL https://gitea.tmayt.ir/thaiostream/wp/raw/branch/main/install.sh) mysite
+bash <(curl -fsSL https://gitea.tmayt.ir/thaiostream/wp/raw/branch/main/install.sh) mysite example.com
 ```
 
-Replace `mysite` with your site name (used for container name and DB names).
+Replace `mysite` with your site name and `example.com` with your domain. If you omit the domain, the script asks for it interactively.
 
 Then build and start:
 
@@ -39,19 +39,22 @@ docker compose build
 docker compose up -d
 ```
 
-The script prints ports and passwords—**save that output**. Example:
+The script prints domain-based URLs and a private credentials page link—**save that output**. Example:
 
 ```
 Website Name        : mysite
+Domain              : example.com
 WordPress Port      : 28431
 FileBrowser Port    : 45210
 MariaDB Port        : 52388
-phpMyAdmin URL      : http://<host>:28431/phpmyadmin
-FileBrowser User    : admin
-FileBrowser Password: ...
-Database Password   : ...
+WordPress URL       : http://example.com:28431/
+phpMyAdmin URL      : http://example.com:28431/phpmyadmin
+FileBrowser URL     : http://example.com:45210/
+...
+Credentials page    : http://example.com:28431/<random>.html
 ```
 
+Point the domain DNS at this server before opening the links. The credentials HTML is created on first container boot under a random filename.
 ---
 
 ## Manual install (clone repo)

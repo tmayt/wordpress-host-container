@@ -3,14 +3,45 @@
 # Website name
 SITE_NAME="${1:-auroralife}"
 
+# Domain: 2nd arg, SITE_DOMAIN env, or interactive prompt (no IP)
+normalize_domain() {
+    local d="$1"
+    d="${d#http://}"
+    d="${d#https://}"
+    d="${d%%/*}"
+    d="${d%%:*}"
+    d="${d%.}"
+    printf '%s' "$d" | tr '[:upper:]' '[:lower:]'
+}
+
+SITE_DOMAIN="${2:-${SITE_DOMAIN:-}}"
+if [ -z "$SITE_DOMAIN" ]; then
+    if [ -t 0 ]; then
+        echo -n "دامنه سایت را وارد کنید (مثلا example.com): "
+        read -r SITE_DOMAIN
+    fi
+fi
+
+SITE_DOMAIN=$(normalize_domain "$SITE_DOMAIN")
+if [ -z "$SITE_DOMAIN" ]; then
+    echo "خطا: دامنه الزامی است. مثال:"
+    echo "  bash <(curl -fsSL https://gitea.tmayt.ir/thaiostream/wp/raw/branch/main/install.sh) mysite example.com"
+    exit 1
+fi
+
 # Generate random passwords
 FILEBROWSER_PASS=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)
 DB_PASS=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)
+
+# Unguessable credentials page filename (served over HTTP after first boot)
+CREDENTIALS_TOKEN=$(openssl rand -hex 24)
 
 # Generate random ports
 PORT_HTTP=$(shuf -i 20000-40000 -n 1)
 PORT_FILEBROWSER=$(shuf -i 40001-50000 -n 1)
 PORT_DB=$(shuf -i 50001-60000 -n 1)
+
+CREDENTIALS_URL="http://${SITE_DOMAIN}:${PORT_HTTP}/${CREDENTIALS_TOKEN}.html"
 
 # Output file
 COMPOSE_FILE="docker-compose.yml"
@@ -32,6 +63,11 @@ services:
       DB_USER: ${SITE_NAME}_usr
       DB_PASS: ${DB_PASS}
       DB_ROOT_PASS: ${DB_PASS}
+      CREDENTIALS_TOKEN: ${CREDENTIALS_TOKEN}
+      PUBLIC_HTTP_PORT: "${PORT_HTTP}"
+      PUBLIC_FILEBROWSER_PORT: "${PORT_FILEBROWSER}"
+      PUBLIC_DB_PORT: "${PORT_DB}"
+      PUBLIC_HOST: "${SITE_DOMAIN}"
     volumes:
       - wp_html:/var/www/html
       - wp_db:/var/lib/mysql
@@ -49,10 +85,20 @@ EOF
 echo "docker-compose.yml generated successfully!"
 echo
 echo "Website Name        : ${SITE_NAME}"
+echo "Domain              : ${SITE_DOMAIN}"
 echo "WordPress Port      : ${PORT_HTTP}"
 echo "FileBrowser Port    : ${PORT_FILEBROWSER}"
 echo "MariaDB Port        : ${PORT_DB}"
-echo "phpMyAdmin URL      : http://<host>:${PORT_HTTP}/phpmyadmin"
+echo "WordPress URL       : http://${SITE_DOMAIN}:${PORT_HTTP}/"
+echo "phpMyAdmin URL      : http://${SITE_DOMAIN}:${PORT_HTTP}/phpmyadmin"
+echo "FileBrowser URL     : http://${SITE_DOMAIN}:${PORT_FILEBROWSER}/"
 echo "FileBrowser User    : admin"
 echo "FileBrowser Password: ${FILEBROWSER_PASS}"
 echo "Database Password   : ${DB_PASS}"
+echo
+echo "======================================"
+echo " Credentials page (save this link):"
+echo " ${CREDENTIALS_URL}"
+echo "======================================"
+echo "After: docker compose up -d --build"
+echo "open the link above (available after first boot)."
