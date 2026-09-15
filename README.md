@@ -10,11 +10,11 @@ Use this when you want WordPress up quickly without installing PHP, MySQL, and A
 
 | Component | Role | How you access it |
 |-----------|------|-------------------|
-| **WordPress** | CMS / website | `http://<host>:<HTTP_PORT>/` |
+| **WordPress** | CMS / website | `http://<domain>/` |
 | **Apache** | Web server | Port `80` inside the container |
 | **MariaDB** | Database | `localhost:3306` inside the container; optional host port mapping |
-| **phpMyAdmin** | Manage MariaDB in the browser | `http://<host>:<HTTP_PORT>/phpmyadmin` |
-| **FileBrowser** | Edit files under `/var/www/html` | `http://<host>:<FILEBROWSER_PORT>/` |
+| **phpMyAdmin** | Manage MariaDB in the browser | `http://<domain>/phpmyadmin` |
+| **FileBrowser** | Edit files under `/var/www/html` | `http://<domain>/filebrowser` |
 | **WP-CLI** | WordPress command line | `docker exec -it <container> wp ...` |
 | **ionCube Loader** | Run ionCube-encoded PHP plugins/themes | Enabled in PHP automatically |
 
@@ -39,22 +39,21 @@ docker compose build
 docker compose up -d
 ```
 
-The script prints domain-based URLs and a private credentials page link—**save that output**. Example:
+The script prints domain-based URLs (no port in the link) and a private credentials page—**save that output**. Example:
 
 ```
-Website Name        : mysite
-Domain              : example.com
-WordPress Port      : 28431
-FileBrowser Port    : 45210
-MariaDB Port        : 52388
-WordPress URL       : http://example.com:28431/
-phpMyAdmin URL      : http://example.com:28431/phpmyadmin
-FileBrowser URL     : http://example.com:45210/
+Website Name           : mysite
+Domain                 : example.com
+Docker HTTP port (edge): 28431
+Docker MariaDB port    : 52388
+WordPress URL          : http://example.com/
+phpMyAdmin URL         : http://example.com/phpmyadmin
+FileBrowser URL        : http://example.com/filebrowser
 ...
-Credentials page    : http://example.com:28431/<random>.html
+Credentials page       : http://example.com/<random>.html
 ```
 
-Point the domain DNS at this server before opening the links. The credentials HTML is created on first container boot under a random filename.
+Point your edge/proxy at the Docker HTTP port. The credentials HTML is created on first container boot under a random filename.
 ---
 
 ## Manual install (clone repo)
@@ -81,8 +80,7 @@ Default ports in the bundled `docker-compose.yml`:
 
 | Service | Host port | URL |
 |---------|-----------|-----|
-| WordPress + phpMyAdmin | `80` | `http://localhost/` and `http://localhost/phpmyadmin` |
-| FileBrowser | `8080` | `http://localhost:8080` |
+| WordPress + phpMyAdmin + FileBrowser | `80` | `http://localhost/`, `/phpmyadmin`, `/filebrowser` |
 | MariaDB (optional external access) | not exposed by default | use `docker exec` or add `3306:3306` |
 
 View first-run credentials in logs:
@@ -120,7 +118,7 @@ Open the HTTP port in your browser and complete the WordPress installation wizar
 
 ### phpMyAdmin
 
-URL: `http://<host>:<HTTP_PORT>/phpmyadmin`
+URL: `http://<domain>/phpmyadmin`
 
 Sign in with either:
 
@@ -129,9 +127,9 @@ Sign in with either:
 
 ### FileBrowser
 
-URL: `http://<host>:<FILEBROWSER_PORT>/`
+URL: `http://<domain>/filebrowser`
 
-Use `FILEBROWSER_USER` / `FILEBROWSER_PASS`. Root directory is `/var/www/html` (WordPress files).
+Use `FILEBROWSER_USER` / `FILEBROWSER_PASS`. Root directory is `/var/www/html` (WordPress files). FileBrowser runs on localhost inside the container and is reverse-proxied by Apache.
 
 ### WP-CLI
 

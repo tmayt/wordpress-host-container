@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
 # ===== Apache VirtualHost (pretty permalinks) =====
 COPY apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
- && a2enmod rewrite \
+ && a2enmod rewrite proxy proxy_http headers \
  && a2ensite 000-default.conf
 
 # ===== Install phpMyAdmin =====
@@ -28,10 +28,12 @@ RUN chmod +x /phpmyadmin/get.sh \
  && cp /phpmyadmin/apache-phpmyadmin.conf /etc/apache2/conf-available/phpmyadmin.conf \
  && a2enconf phpmyadmin
 
-# ===== Install FileBrowser =====
+# ===== Install FileBrowser (proxied at /filebrowser) =====
 COPY filebrowser /filebrowser
 RUN chmod +x /filebrowser/get.sh \
- && /filebrowser/get.sh
+ && /filebrowser/get.sh \
+ && cp /filebrowser/apache-filebrowser.conf /etc/apache2/conf-available/filebrowser.conf \
+ && a2enconf filebrowser
 
 # ===== WordPress =====
 COPY wordpress-6.9.4.tar.gz /tmp/latest.tar.gz

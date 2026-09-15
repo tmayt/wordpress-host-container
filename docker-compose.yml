@@ -5,7 +5,6 @@ services:
     build: .
     ports:
       - "80:80"
-      - "8080:8080"
     environment:
       FILEBROWSER_USER: admin
       FILEBROWSER_PASS: admin123@qwe

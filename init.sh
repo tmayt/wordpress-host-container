@@ -53,8 +53,6 @@ write_credentials_page() {
     : "${DB_ROOT_PASS:=root123456}"
     : "${FILEBROWSER_USER:=admin}"
     : "${FILEBROWSER_PASS:=admin123@qwe}"
-    : "${PUBLIC_HTTP_PORT:=80}"
-    : "${PUBLIC_FILEBROWSER_PORT:=8080}"
     : "${PUBLIC_DB_PORT:=3306}"
     : "${PUBLIC_HOST:=}"
 
@@ -87,17 +85,11 @@ write_credentials_page() {
     e_fb_user=$(html_escape "$FILEBROWSER_USER")
     e_fb_pass=$(html_escape "$FILEBROWSER_PASS")
 
-    local wp_url pma_url fb_url wp_admin_url
-    if [ "${PUBLIC_HTTP_PORT}" = "80" ]; then
-        wp_url="http://${PUBLIC_HOST:-localhost}/"
-        wp_admin_url="http://${PUBLIC_HOST:-localhost}/wp-admin/"
-        pma_url="http://${PUBLIC_HOST:-localhost}/phpmyadmin/"
-    else
-        wp_url="http://${PUBLIC_HOST:-localhost}:${PUBLIC_HTTP_PORT}/"
-        wp_admin_url="http://${PUBLIC_HOST:-localhost}:${PUBLIC_HTTP_PORT}/wp-admin/"
-        pma_url="http://${PUBLIC_HOST:-localhost}:${PUBLIC_HTTP_PORT}/phpmyadmin/"
-    fi
-    fb_url="http://${PUBLIC_HOST:-localhost}:${PUBLIC_FILEBROWSER_PORT}/"
+    local base="http://${PUBLIC_HOST:-localhost}"
+    local wp_url="${base}/"
+    local wp_admin_url="${base}/wp-admin/"
+    local pma_url="${base}/phpmyadmin/"
+    local fb_url="${base}/filebrowser/"
 
     local e_wp_url e_wp_admin e_pma_url e_fb_url
     e_wp_url=$(html_escape "$wp_url")
@@ -223,6 +215,16 @@ ensure_wordpress_htaccess
 : "${FILEBROWSER_USER:=admin}"
 : "${FILEBROWSER_PASS:=admin123@qwe}"
 
+# Keep FileBrowser behind /filebrowser even on upgraded volumes
+FILE_DB="/database/filebrowser.db"
+if [ -f "$FILE_DB" ]; then
+    /usr/local/bin/filebrowser config set \
+        --database "$FILE_DB" \
+        --address 127.0.0.1 \
+        --port 8080 \
+        --baseurl /filebrowser >/dev/null 2>&1 || true
+fi
+
 # =========================
 # FIRST RUN CHECK
 # =========================
@@ -282,8 +284,9 @@ if [ ! -f "$FILE_DB" ]; then
 
     /usr/local/bin/filebrowser config init \
         --database "$FILE_DB" \
-        --address 0.0.0.0 \
-        --port 8080
+        --address 127.0.0.1 \
+        --port 8080 \
+        --baseurl /filebrowser
 
     /usr/local/bin/filebrowser users add \
         "${FILEBROWSER_USER}" \
@@ -338,17 +341,17 @@ echo "DB_PASSWORD  : ${DB_PASS}"
 echo "DB_ROOT_PASS : ${DB_ROOT_PASS}"
 echo ""
 echo "FileBrowser"
-echo "URL      : http://${PUBLIC_HOST:-localhost}:${PUBLIC_FILEBROWSER_PORT:-8080}"
+echo "URL      : http://${PUBLIC_HOST:-localhost}/filebrowser"
 echo "USERNAME : ${FILEBROWSER_USER}"
 echo "PASSWORD : ${FILEBROWSER_PASS}"
 echo ""
 echo "phpMyAdmin"
-echo "URL      : http://${PUBLIC_HOST:-localhost}:${PUBLIC_HTTP_PORT:-80}/phpmyadmin"
+echo "URL      : http://${PUBLIC_HOST:-localhost}/phpmyadmin"
 echo "LOGIN    : use DB_USER/DB_PASS or root / DB_ROOT_PASS"
 if [ -n "${CREDENTIALS_TOKEN:-}" ]; then
     echo ""
     echo "Credentials page"
-    echo "URL      : http://${PUBLIC_HOST:-localhost}:${PUBLIC_HTTP_PORT:-80}/${CREDENTIALS_TOKEN}.html"
+    echo "URL      : http://${PUBLIC_HOST:-localhost}/${CREDENTIALS_TOKEN}.html"
 fi
 echo "======================================"
 echo ""
