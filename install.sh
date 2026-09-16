@@ -60,6 +60,7 @@ services:
       - wp_db:/var/lib/mysql
       - filebrowser_db:/database
       - filebrowser_cfg:/config
+      - apache2_data:/etc/php/8.1/apache2
     restart: always
     mem_limit: 1536m
     cpus: 2.0
@@ -69,6 +70,7 @@ volumes:
   wp_db:
   filebrowser_db:
   filebrowser_cfg:
+  apache2_data:
 EOF
 
 echo "docker-compose.yml generated successfully!"

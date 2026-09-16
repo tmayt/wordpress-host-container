@@ -17,6 +17,7 @@ services:
       - wp_db:/var/lib/mysql
       - filebrowser_db:/database
       - filebrowser_cfg:/config
+      - apache2_data:/etc/php/8.1/apache2
     restart: always
     # Soft caps for a typical small VPS; raise if the site grows
     mem_limit: 1536m
@@ -27,3 +28,4 @@ volumes:
   wp_db:
   filebrowser_db:
   filebrowser_cfg:
+  apache2_data:
