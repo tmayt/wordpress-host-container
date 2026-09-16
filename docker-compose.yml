@@ -18,6 +18,9 @@ services:
       - filebrowser_db:/database
       - filebrowser_cfg:/config
     restart: always
+    # Soft caps for a typical small VPS; raise if the site grows
+    mem_limit: 1536m
+    cpus: 2.0
 
 volumes:
   wp_html:

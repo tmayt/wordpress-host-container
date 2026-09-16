@@ -8,18 +8,48 @@ RUN echo "deb http://mirror.arvancloud.ir/ubuntu/ jammy main restricted universe
  && echo "deb http://mirror.arvancloud.ir/ubuntu/ jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list \
  && echo "deb http://mirror.arvancloud.ir/ubuntu/ jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
 
-# ===== Install all services =====
-RUN apt-get update && apt-get install -y \
+# ===== Install all services (PHP-FPM instead of mod_php) =====
+RUN apt-get update && apt-get install -y --no-install-recommends \
     apache2 mariadb-server \
-    php php-mysql php-cli php-curl php-xml php-mbstring php-zip php-gd libapache2-mod-php \
-    wget curl unzip tar openssl supervisor nano \
+    php php-fpm php-mysql php-cli php-curl php-xml php-mbstring php-zip php-gd php-opcache \
+    wget curl unzip tar openssl supervisor ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# ===== Apache VirtualHost (pretty permalinks) =====
+# ===== Apache: event MPM + FPM + compression/cache =====
 COPY apache/000-default.conf /etc/apache2/sites-available/000-default.conf
-RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
- && a2enmod rewrite proxy proxy_http headers \
- && a2ensite 000-default.conf
+COPY performance/apache-mpm.conf /etc/apache2/conf-available/mpm-tuning.conf
+COPY performance/apache-performance.conf /etc/apache2/conf-available/performance.conf
+COPY performance/apache-php-fpm.conf /etc/apache2/conf-available/php-fpm.conf
+RUN set -eux; \
+    # PHP mod_* pins mpm_prefork — disable PHP SAPIs first, then switch MPM
+    a2dismod php8.1 2>/dev/null || true; \
+    a2dismod php8.2 2>/dev/null || true; \
+    a2dismod php8.3 2>/dev/null || true; \
+    a2dismod mpm_prefork; \
+    a2enmod mpm_event; \
+    a2enmod rewrite proxy proxy_http proxy_fcgi setenvif headers deflate expires; \
+    a2enconf mpm-tuning performance php-fpm; \
+    sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf; \
+    a2ensite 000-default.conf; \
+    sed -i 's|^ErrorLog .*|ErrorLog ${APACHE_LOG_DIR}/error.log|' /etc/apache2/apache2.conf
+
+# ===== PHP performance (OPcache + runtime) =====
+COPY performance/php-performance.ini /tmp/php-performance.ini
+COPY performance/php-opcache.ini /tmp/php-opcache.ini
+COPY performance/php-fpm-pool.conf /tmp/php-fpm-pool.conf
+COPY performance/php-fpm-start.sh /usr/local/bin/php-fpm-start.sh
+RUN set -eux; \
+    PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"; \
+    cp /tmp/php-performance.ini "/etc/php/${PHP_VER}/fpm/conf.d/99-performance.ini"; \
+    cp /tmp/php-performance.ini "/etc/php/${PHP_VER}/cli/conf.d/99-performance.ini"; \
+    cp /tmp/php-opcache.ini "/etc/php/${PHP_VER}/fpm/conf.d/10-opcache-tune.ini"; \
+    cp /tmp/php-opcache.ini "/etc/php/${PHP_VER}/cli/conf.d/10-opcache-tune.ini"; \
+    cp /tmp/php-fpm-pool.conf "/etc/php/${PHP_VER}/fpm/pool.d/www.conf"; \
+    chmod +x /usr/local/bin/php-fpm-start.sh; \
+    mkdir -p /run/php
+
+# ===== MariaDB low-memory tuning =====
+COPY performance/mariadb.cnf /etc/mysql/mariadb.conf.d/99-performance.cnf
 
 # ===== Install phpMyAdmin =====
 COPY phpmyadmin /phpmyadmin
@@ -50,6 +80,10 @@ RUN chown -R www-data:www-data /var/www/html
 # ===== Supervisor config =====
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# ===== FileBrowser start wrapper =====
+COPY filebrowser-start.sh /usr/local/bin/filebrowser-start.sh
+RUN chmod +x /usr/local/bin/filebrowser-start.sh
+
 # ===== Init script =====
 COPY init.sh /init.sh
 RUN chmod +x /init.sh
@@ -72,14 +106,18 @@ RUN set -eux; \
         exit 1; \
     fi; \
     cp "$IONCUBE" "$EXT_DIR/"; \
-    echo "zend_extension=$EXT_DIR/$(basename $IONCUBE)" > /etc/php/${PHP_MAJOR}.${PHP_MINOR}/apache2/conf.d/00-ioncube.ini; \
-    echo "zend_extension=$EXT_DIR/$(basename $IONCUBE)" > /etc/php/${PHP_MAJOR}.${PHP_MINOR}/cli/conf.d/00-ioncube.ini
+    for sapi in apache2 cli fpm; do \
+        confdir="/etc/php/${PHP_MAJOR}.${PHP_MINOR}/${sapi}/conf.d"; \
+        if [ -d "$confdir" ]; then \
+            echo "zend_extension=$EXT_DIR/$(basename $IONCUBE)" > "$confdir/00-ioncube.ini"; \
+        fi; \
+    done
 
 # ===== WP-CLI =====
 RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
  && chmod +x wp-cli.phar \
  && mv wp-cli.phar /usr/local/bin/wp
 
-EXPOSE 80 8080 3306
+EXPOSE 80
 
 CMD ["/usr/bin/supervisord", "-n"]

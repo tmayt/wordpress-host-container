@@ -33,13 +33,8 @@ fi
 FILEBROWSER_PASS=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)
 DB_PASS=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)
 
-# Unguessable credentials page filename (served over HTTP after first boot)
-CREDENTIALS_TOKEN=$(openssl rand -hex 24)
-
 # Host port for edge → container:80 (not shown in public URLs)
 PORT_HTTP=$(shuf -i 20000-40000 -n 1)
-
-CREDENTIALS_URL="http://${SITE_DOMAIN}/${CREDENTIALS_TOKEN}.html"
 
 # Output file
 COMPOSE_FILE="docker-compose.yml"
@@ -59,7 +54,6 @@ services:
       DB_USER: ${SITE_NAME}_usr
       DB_PASS: ${DB_PASS}
       DB_ROOT_PASS: ${DB_PASS}
-      CREDENTIALS_TOKEN: ${CREDENTIALS_TOKEN}
       PUBLIC_HOST: "${SITE_DOMAIN}"
     volumes:
       - wp_html:/var/www/html
@@ -67,6 +61,8 @@ services:
       - filebrowser_db:/database
       - filebrowser_cfg:/config
     restart: always
+    mem_limit: 1536m
+    cpus: 2.0
 
 volumes:
   wp_html:
@@ -87,9 +83,5 @@ echo "FileBrowser User       : admin"
 echo "FileBrowser Password   : ${FILEBROWSER_PASS}"
 echo "Database Password      : ${DB_PASS}"
 echo
-echo "======================================"
-echo " Credentials page (save this link):"
-echo " ${CREDENTIALS_URL}"
-echo "======================================"
 echo "After: docker compose up -d --build"
-echo "Point your edge/proxy to host port ${PORT_HTTP}, then open the link above."
+echo "Point your edge/proxy to host port ${PORT_HTTP}."
