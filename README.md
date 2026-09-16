@@ -14,7 +14,7 @@ Use this when you want WordPress up quickly without installing PHP, MySQL, and A
 | **Apache** | Web server | Port `80` inside the container |
 | **MariaDB** | Database | Only inside the container (`localhost:3306`); manage via phpMyAdmin |
 | **phpMyAdmin** | Manage MariaDB in the browser | `http://<domain>/phpmyadmin` |
-| **FileBrowser** | Edit files under `/var/www/html` | `http://<domain>/filebrowser` |
+| **FileBrowser** | Edit any file in the container (root `/`) | `http://<domain>/filebrowser` |
 | **WP-CLI** | WordPress command line | `docker exec -it <container> wp ...` |
 | **ionCube Loader** | Run ionCube-encoded PHP plugins/themes | Enabled in PHP automatically |
 
@@ -127,7 +127,7 @@ Sign in with either:
 
 URL: `http://<domain>/filebrowser`
 
-Use `FILEBROWSER_USER` / `FILEBROWSER_PASS`. Root directory is `/var/www/html` (WordPress files). FileBrowser runs on localhost inside the container and is reverse-proxied by Apache.
+Use `FILEBROWSER_USER` / `FILEBROWSER_PASS`. Root directory is `/` (full container filesystem), so you can edit WordPress under `/var/www/html` and PHP settings under `/etc/php/<ver>/`. This stack uses **PHP-FPM**; the active ini is `/etc/php/<ver>/fpm/php.ini` (an `apache2/php.ini` is also kept writable for convenience). Restart PHP-FPM after ini changes (`supervisorctl restart php-fpm` inside the container). FileBrowser runs as root on localhost and is reverse-proxied by Apache.
 
 ### WP-CLI
 

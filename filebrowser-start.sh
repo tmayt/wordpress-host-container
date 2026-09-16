@@ -21,15 +21,18 @@ if [ ! -f "$DB" ]; then
         --database "$DB" \
         --address 127.0.0.1 \
         --port 8080 \
-        --baseurl /filebrowser
+        --baseurl /filebrowser \
+        --root /
 fi
 
 chmod 666 "$DB" 2>/dev/null || true
 chmod 777 /database 2>/dev/null || true
 
+# Root is filesystem `/` so operators can edit container configs
+# (e.g. /etc/php/*/fpm/php.ini) from FileBrowser, not only WordPress files.
 exec /usr/local/bin/filebrowser \
     -a 127.0.0.1 \
     -p 8080 \
     --baseurl /filebrowser \
     --database "$DB" \
-    --root /var/www/html
+    --root /

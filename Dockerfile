@@ -46,7 +46,20 @@ RUN set -eux; \
     cp /tmp/php-opcache.ini "/etc/php/${PHP_VER}/cli/conf.d/10-opcache-tune.ini"; \
     cp /tmp/php-fpm-pool.conf "/etc/php/${PHP_VER}/fpm/pool.d/www.conf"; \
     chmod +x /usr/local/bin/php-fpm-start.sh; \
-    mkdir -p /run/php
+    mkdir -p /run/php; \
+    # Ensure apache2/cli/fpm php.ini trees exist and are writable via FileBrowser (root)
+    for sapi in fpm cli apache2; do \
+      mkdir -p "/etc/php/${PHP_VER}/${sapi}/conf.d"; \
+      if [ ! -f "/etc/php/${PHP_VER}/${sapi}/php.ini" ]; then \
+        if [ -f "/etc/php/${PHP_VER}/fpm/php.ini" ]; then \
+          cp "/etc/php/${PHP_VER}/fpm/php.ini" "/etc/php/${PHP_VER}/${sapi}/php.ini"; \
+        elif [ -f "/etc/php/${PHP_VER}/cli/php.ini" ]; then \
+          cp "/etc/php/${PHP_VER}/cli/php.ini" "/etc/php/${PHP_VER}/${sapi}/php.ini"; \
+        fi; \
+      fi; \
+    done; \
+    find "/etc/php/${PHP_VER}" -type f -name '*.ini' -exec chmod 664 {} +; \
+    find "/etc/php/${PHP_VER}" -type d -exec chmod 755 {} +
 
 # ===== MariaDB low-memory tuning =====
 COPY performance/mariadb.cnf /etc/mysql/mariadb.conf.d/99-performance.cnf

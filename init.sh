@@ -133,6 +133,7 @@ ensure_wp_performance_config
 : "${FILEBROWSER_PASS:=admin123@qwe}"
 
 # Keep FileBrowser behind /filebrowser even on upgraded volumes.
+# Root `/` so configs like /etc/php can be edited from the UI.
 FILE_DB="/database/filebrowser.db"
 mkdir -p /database
 if [ -f "$FILE_DB" ]; then
@@ -140,14 +141,57 @@ if [ -f "$FILE_DB" ]; then
         --database "$FILE_DB" \
         --address 127.0.0.1 \
         --port 8080 \
-        --baseurl /filebrowser >/dev/null 2>&1 || true
-    # Env password only applied on first DB create; re-sync so compose changes work
+        --baseurl /filebrowser \
+        --root / >/dev/null 2>&1 || true
+    # Env password only applied on first DB create; re-sync so compose changes work.
+    # Scope `/` unlocks the full container filesystem for upgraded volumes.
     /usr/local/bin/filebrowser users update "${FILEBROWSER_USER}" \
         --password "${FILEBROWSER_PASS}" \
+        --scope / \
+        --perm.admin \
         --database "$FILE_DB" >/dev/null 2>&1 || true
 fi
 chmod 666 "$FILE_DB" 2>/dev/null || true
 chmod 777 /database 2>/dev/null || true
+
+# FileBrowser runs as root; make PHP ini trees explicitly writable and ensure
+# apache2/fpm/cli layouts exist so paths like /etc/php/8.1/apache2/php.ini work.
+ensure_php_ini_writable() {
+    local ver sapi src dst
+    ver="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || true)"
+    [ -n "$ver" ] || return 0
+
+    for sapi in fpm cli apache2; do
+        mkdir -p "/etc/php/${ver}/${sapi}/conf.d"
+        dst="/etc/php/${ver}/${sapi}/php.ini"
+        if [ ! -f "$dst" ]; then
+            src=""
+            for candidate in \
+                "/etc/php/${ver}/fpm/php.ini" \
+                "/etc/php/${ver}/cli/php.ini" \
+                "/usr/share/php8.1-common/php.ini-production" \
+                "/usr/share/php${ver}/php.ini-production"; do
+                if [ -f "$candidate" ]; then
+                    src="$candidate"
+                    break
+                fi
+            done
+            if [ -n "$src" ]; then
+                cp "$src" "$dst"
+            else
+                printf '; php.ini created for FileBrowser editing\n' > "$dst"
+            fi
+        fi
+        chown root:root "$dst" 2>/dev/null || true
+        chmod 664 "$dst" 2>/dev/null || true
+    done
+
+    # Whole /etc/php tree traversable + writable by root FileBrowser process
+    chmod 755 /etc/php 2>/dev/null || true
+    find "/etc/php/${ver}" -type d -exec chmod 755 {} + 2>/dev/null || true
+    find "/etc/php/${ver}" -type f -name '*.ini' -exec chmod 664 {} + 2>/dev/null || true
+}
+ensure_php_ini_writable
 
 # =========================
 # FIRST RUN CHECK
@@ -208,21 +252,26 @@ if [ ! -f "$FILE_DB" ]; then
         --database "$FILE_DB" \
         --address 127.0.0.1 \
         --port 8080 \
-        --baseurl /filebrowser
+        --baseurl /filebrowser \
+        --root /
 
     /usr/local/bin/filebrowser users add \
         "${FILEBROWSER_USER}" \
         "${FILEBROWSER_PASS}" \
         --database "$FILE_DB" \
+        --scope / \
         --perm.admin || true
 else
     /usr/local/bin/filebrowser users update "${FILEBROWSER_USER}" \
         --password "${FILEBROWSER_PASS}" \
+        --scope / \
+        --perm.admin \
         --database "$FILE_DB" >/dev/null 2>&1 || \
     /usr/local/bin/filebrowser users add \
         "${FILEBROWSER_USER}" \
         "${FILEBROWSER_PASS}" \
         --database "$FILE_DB" \
+        --scope / \
         --perm.admin || true
 fi
 chmod 666 "$FILE_DB" 2>/dev/null || true
